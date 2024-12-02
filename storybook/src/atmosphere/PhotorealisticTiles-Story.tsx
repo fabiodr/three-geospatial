@@ -45,7 +45,6 @@ import {
   Depth,
   Dithering,
   EffectComposer,
-  LensFlare,
   Normal
 } from '@takram/three-geospatial-effects/r3f'
 
@@ -265,7 +264,6 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
               correctGeometricError={correctGeometricError}
             />
           )}
-          {lensFlare && <LensFlare />}
           {depth && <Depth useTurbo />}
           {normal && <Normal octEncoded />}
           {!normal && !depth && (
