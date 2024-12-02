@@ -229,7 +229,6 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
               transmittance={transmittance}
               inscatter={inscatter}
               correctGeometricError={correctGeometricError}
-              irradianceScale={2 / Math.PI}
             />
           )}
           {lensFlare && <LensFlare />}
