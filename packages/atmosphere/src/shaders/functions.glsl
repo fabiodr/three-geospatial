@@ -444,7 +444,7 @@ vec3 GetSkyRadianceToPoint(
   vec3 scattering = GetCombinedScattering(
     u_scattering_texture,
     u_single_mie_scattering_texture,
-    r,
+    max(r, u_bottom_radius),
     mu,
     mu_s,
     nu,
