@@ -17,6 +17,12 @@ import {
   useRef,
   type FC
 } from 'react'
+import {
+  Mesh,
+  MeshStandardMaterial,
+  type Group,
+  type MeshBasicMaterial
+} from 'three'
 import { DRACOLoader, GLTFLoader } from 'three-stdlib'
 
 import {
@@ -29,7 +35,9 @@ import {
   AerialPerspective,
   Atmosphere,
   Sky,
+  SkyLight,
   Stars,
+  SunLight,
   type AtmosphereApi
 } from '@takram/three-atmosphere/r3f'
 import { Geodetic, PointOfView, radians } from '@takram/three-geospatial'
@@ -54,7 +62,10 @@ import {
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/')
 
-const Globe: FC<{ apiKey: string }> = ({ apiKey }) => {
+const Globe: FC<{ apiKey: string; forward: boolean }> = ({
+  apiKey,
+  forward
+}) => {
   const tiles = useMemo(() => {
     const tiles = new TilesRenderer()
     tiles.registerPlugin(
@@ -75,8 +86,22 @@ const Globe: FC<{ apiKey: string }> = ({ apiKey }) => {
     loader.setDRACOLoader(dracoLoader)
     tiles.manager.addHandler(/\.gltf$/, loader)
 
+    if (forward) {
+      tiles.addEventListener('load-model', event => {
+        ;(event as { scene: Group }).scene.traverse(object => {
+          if (object instanceof Mesh) {
+            const nextMaterial = new MeshStandardMaterial()
+            const prevMaterial: MeshBasicMaterial = object.material
+            nextMaterial.map = prevMaterial.map
+            object.material = nextMaterial
+            prevMaterial.dispose()
+          }
+        })
+      })
+    }
+
     return tiles
-  }, [apiKey])
+  }, [apiKey, forward])
 
   useEffect(() => {
     return () => {
@@ -122,6 +147,7 @@ interface SceneProps extends LocalDateControlsParams {
   heading?: number
   pitch?: number
   distance?: number
+  forward?: boolean
 }
 
 const Scene: FC<SceneProps & { apiKey: string }> = ({
@@ -132,6 +158,7 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
   heading = 180,
   pitch = -30,
   distance = 4500,
+  forward = false,
   ...localDate
 }) => {
   useExposureControls({ exposure })
@@ -168,15 +195,20 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
     inscatter: true
   })
 
+  const target = useMemo(
+    () => new Geodetic(radians(longitude), radians(latitude)).toECEF(),
+    [longitude, latitude]
+  )
+
   const camera = useThree(({ camera }) => camera)
   useLayoutEffect(() => {
     new PointOfView(distance, radians(heading), radians(pitch)).decompose(
-      new Geodetic(radians(longitude), radians(latitude)).toECEF(),
+      target,
       camera.position,
       camera.quaternion,
       camera.up
     )
-  }, [longitude, latitude, heading, pitch, distance, camera])
+  }, [target, heading, pitch, distance, camera])
 
   // Effects must know the camera near/far changed by GlobeControls.
   const composerRef = useRef<EffectComposerImpl>(null)
@@ -204,8 +236,10 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
       photometric={photometric}
     >
       <Sky renderTargetCount={2} />
+      {sun && forward && <SunLight position={target} />}
+      {sky && forward && <SkyLight position={target} />}
       <Stars data='atmosphere/stars.bin' renderTargetCount={2} />
-      <Globe apiKey={apiKey} />
+      <Globe apiKey={apiKey} forward={forward} />
       <EffectComposer ref={composerRef} multisampling={0}>
         <Fragment
           // Effects are order-dependant; we need to reconstruct the nodes.
@@ -224,8 +258,8 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
         >
           {enabled && !normal && !depth && (
             <AerialPerspective
-              sunIrradiance={sun}
-              skyIrradiance={sky}
+              sunIrradiance={!forward && sun}
+              skyIrradiance={!forward && sky}
               transmittance={transmittance}
               inscatter={inscatter}
               correctGeometricError={correctGeometricError}

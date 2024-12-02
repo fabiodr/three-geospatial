@@ -11,6 +11,8 @@ export default {
 
 export const Tokyo: StoryFn = () => <Story exposure={10} />
 
+export const TokyoForward: StoryFn = () => <Story exposure={10} forward />
+
 export const Fuji: StoryFn = () => (
   <Story
     longitude={138.5973}
