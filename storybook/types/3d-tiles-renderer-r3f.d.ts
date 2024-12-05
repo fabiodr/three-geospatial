@@ -1,4 +1,3 @@
-// Custom types with support for pass through props to work around lack of provided types
 declare module '3d-tiles-renderer/r3f' {
   import { type GlobeControls, type TilesRenderer } from '3d-tiles-renderer'
   import { type RefAttributes } from 'react'
@@ -13,7 +12,7 @@ declare module '3d-tiles-renderer/r3f' {
 
   export function TilesRenderer<T extends new (...args: any[]) => any>(
     props: {
-      url?: String
+      url?: string
     } & Partial<ConstructorParameters<T>[0]> &
       RefAttributes<TilesRenderer>
   ): JSX.Element

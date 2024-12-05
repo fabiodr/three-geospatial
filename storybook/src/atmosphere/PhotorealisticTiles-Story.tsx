@@ -14,7 +14,7 @@ import {
   TilesPlugin,
   TilesRenderer
 } from '3d-tiles-renderer/r3f'
-import { useControls as useSharedControls } from 'leva'
+import { useAtom, useAtomValue } from 'jotai'
 import {
   EffectMaterial,
   ToneMappingMode,
@@ -48,10 +48,16 @@ import {
   type AtmosphereApi
 } from '@takram/three-atmosphere/r3f'
 import { Geodetic, PointOfView, radians } from '@takram/three-geospatial'
-import { Depth, Dithering, LensFlare, Normal } from '@takram/three-geospatial-effects/r3f'
+import {
+  Depth,
+  Dithering,
+  LensFlare,
+  Normal
+} from '@takram/three-geospatial-effects/r3f'
 
 import { EffectComposer } from '../helpers/EffectComposer'
 import { HaldLUT } from '../helpers/HaldLUT'
+import { googleMapsApiKeyAtom } from '../helpers/states'
 import { Stats } from '../helpers/Stats'
 import { useColorGradingControls } from '../helpers/useColorGradingControls'
 import { useControls } from '../helpers/useControls'
@@ -64,10 +70,7 @@ import {
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/')
 
-const Globe: FC<{ apiKey: string; forward: boolean }> = ({
-  apiKey,
-  forward
-}) => {
+const Globe: FC<{ forward: boolean }> = ({ forward }) => {
   const [tiles, setTiles] = useState<TilesRendererImpl | null>(null)
   useEffect(() => {
     if (forward && tiles != null) {
@@ -85,8 +88,12 @@ const Globe: FC<{ apiKey: string; forward: boolean }> = ({
     }
   }, [tiles, forward])
 
+  const apiKey = useAtomValue(googleMapsApiKeyAtom)
   return (
-    <TilesRenderer ref={setTiles}>
+    <TilesRenderer
+      ref={setTiles}
+      key={apiKey} // Reconstruct tiles when API key changes.
+    >
       <TilesPlugin plugin={GoogleCloudAuthPlugin} args={{ apiToken: apiKey }} />
       <TilesPlugin plugin={GLTFExtensionsPlugin} dracoLoader={dracoLoader} />
       <TilesPlugin plugin={TileCompressionPlugin} />
@@ -112,8 +119,7 @@ interface SceneProps extends LocalDateControlsParams {
   forward?: boolean
 }
 
-const Scene: FC<SceneProps & { apiKey: string }> = ({
-  apiKey,
+const Scene: FC<SceneProps> = ({
   exposure = 10,
   longitude = 139.7671,
   latitude = 35.6812,
@@ -201,7 +207,7 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
       {sun && forward && <SunLight position={target} />}
       {sky && forward && <SkyLight position={target} />}
       <Stars data='atmosphere/stars.bin' />
-      <Globe apiKey={apiKey} forward={forward} />
+      <Globe forward={forward} />
       <EffectComposer ref={composerRef} multisampling={0}>
         <Fragment
           // Effects are order-dependant; we need to reconstruct the nodes.
@@ -245,9 +251,13 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
 }
 
 export const Story: FC<SceneProps> = props => {
-  const { apiKey } = useSharedControls('google maps', {
+  const [apiKey, setApiKey] = useAtom(googleMapsApiKeyAtom)
+  useControls('google maps', {
     apiKey: {
-      value: import.meta.env.STORYBOOK_GOOGLE_MAP_API_KEY ?? ''
+      value: apiKey,
+      onChange: value => {
+        setApiKey(value)
+      }
     }
   })
   return (
@@ -256,12 +266,11 @@ export const Story: FC<SceneProps> = props => {
         gl={{
           antialias: false,
           depth: false,
-          stencil: false,
-          logarithmicDepthBuffer: true
+          stencil: false
         }}
       >
         <Stats />
-        <Scene {...props} apiKey={apiKey} />
+        <Scene {...props} />
       </Canvas>
       {apiKey === '' && (
         <div
