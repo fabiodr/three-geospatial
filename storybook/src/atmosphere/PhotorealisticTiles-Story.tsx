@@ -48,7 +48,7 @@ import {
   type AtmosphereApi
 } from '@takram/three-atmosphere/r3f'
 import { Geodetic, PointOfView, radians } from '@takram/three-geospatial'
-import { Depth, Dithering, Normal } from '@takram/three-geospatial-effects/r3f'
+import { Depth, Dithering, LensFlare, Normal } from '@takram/three-geospatial-effects/r3f'
 
 import { EffectComposer } from '../helpers/EffectComposer'
 import { HaldLUT } from '../helpers/HaldLUT'
@@ -227,6 +227,7 @@ const Scene: FC<SceneProps & { apiKey: string }> = ({
               correctGeometricError={correctGeometricError}
             />
           )}
+          {lensFlare && <LensFlare />}
           {depth && <Depth useTurbo />}
           {normal && <Normal />}
           {!normal && !depth && (
